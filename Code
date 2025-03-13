@@ -1,0 +1,1439 @@
+/**
+ * AI Model Research Assistant
+ * 
+ * This script helps collect and organize information about AI models by:
+ * 1. Checking known AI company websites for new model announcements
+ * 2. Scanning tech news sources for AI model releases
+ * 3. Suggesting potential new models for manual verification
+ * 4. Identifying duplicates and potential gaps in your database
+ */
+
+// Configuration
+const CONFIG = {
+  SHEET_NAMES: {
+    CATEGORIES: "AI_Categories",
+    MODELS: "AI_Model_Releases",
+    ORGANIZATIONS: "Organizations",
+    SUGGESTIONS: "Research_Suggestions", // New sheet for potential models to add
+    RESEARCH_LOG: "Research_Log"         // Track sources checked and when
+  },
+  // Organizations to monitor for new releases
+  MONITORED_ORGS: [
+  { 
+    name: "OpenAI", 
+    website: "https://openai.com/blog/", 
+    selector: ".post-card",
+    blogFeed: "https://openai.com/blog/rss.xml" // Add this RSS feed
+  },
+  { 
+    name: "Anthropic", 
+    website: "https://www.anthropic.com/news", 
+    selector: ".news-item"
+  },
+  { 
+    name: "Google DeepMind", 
+    website: "https://deepmind.google/", 
+    selector: ".research-card"
+  },
+  { 
+    name: "Meta AI", 
+    website: "https://ai.meta.com/blog/", 
+    selector: ".blog-post"
+  },
+  { 
+    name: "Microsoft Research", 
+    website: "https://www.microsoft.com/en-us/research/blog/", 
+    selector: ".blog-item"
+  },
+  // Add these additional organizations
+  {
+    name: "Stability AI",
+    website: "https://stability.ai/blog",
+    selector: ".blog-card"
+  },
+  {
+    name: "Hugging Face",
+    website: "https://huggingface.co/blog",
+    selector: ".blog-post"
+  },
+  {
+    name: "Mistral AI",
+    website: "https://mistral.ai/news/",
+    selector: ".news-item"
+  }
+],
+ NEWSLETTER_SOURCES: [
+    { 
+      name: "The Rundown AI",
+      url: "https://www.therundown.ai/",
+      articleSelector: "article",
+      titleSelector: "h2",
+      linkSelector: "a",
+      dateSelector: "time, .post-date"
+    },
+    { 
+      name: "AI Secret",
+      url: "https://aisecret.us/",
+      articleSelector: ".article-item, article",
+      titleSelector: "h2",
+      linkSelector: "a",
+      dateSelector: ".article-date"
+    }
+  ],
+  // News sources for AI announcements
+  NEWS_SOURCES: [
+    { name: "TechCrunch AI", url: "https://techcrunch.com/category/artificial-intelligence/" },
+    { name: "VentureBeat AI", url: "https://venturebeat.com/category/ai/" },
+    { name: "The Verge AI", url: "https://www.theverge.com/ai-artificial-intelligence" },
+    // Add more news sources as needed
+  ],
+  // Add the RSS_FEEDS here (after line 35)
+ RSS_FEEDS: [
+    { name: "TechCrunch", url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
+    { name: "VentureBeat", url: "https://venturebeat.com/category/ai/feed/" },
+    { name: "The Verge", url: "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml" },
+    { name: "MIT Technology Review", url: "https://www.technologyreview.com/topic/artificial-intelligence/feed" },
+    { name: "WIRED AI", url: "https://www.wired.com/feed/tag/artificial-intelligence/latest/rss" },
+    { name: "Forbes AI", url: "https://www.forbes.com/ai/feed/" },
+    { name: "ZDNet AI", url: "https://www.zdnet.com/topic/artificial-intelligence/rss.xml" }
+  ],
+  NEWS_API_KEY: "2a3caf18aa9342ca943aba257727008b",
+  RESEARCH_INTERVAL_DAYS: 1,  // How often to check for new models
+  MAX_SUGGESTIONS: 20         // Maximum number of suggestions to add per run
+};
+// Updated RSS feed URLs with fallbacks for problematic sources
+const UPDATED_RSS_FEEDS = [
+  { 
+    name: "TechCrunch", 
+    primaryUrl: "https://techcrunch.com/category/artificial-intelligence/feed/",
+    fallbackUrls: ["https://techcrunch.com/feed/"]
+  },
+  { 
+    name: "VentureBeat", 
+    primaryUrl: "https://venturebeat.com/category/ai/feed/",
+    fallbackUrls: ["https://venturebeat.com/feed/"]
+  },
+  { 
+    name: "The Verge", 
+    primaryUrl: "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml",
+    fallbackUrls: ["https://www.theverge.com/rss/index.xml"]
+  },
+  { 
+    name: "MIT Technology Review", 
+    primaryUrl: "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+    fallbackUrls: ["https://www.technologyreview.com/feed/"]
+  },
+  { 
+    name: "WIRED AI", 
+    primaryUrl: "https://www.wired.com/feed/tag/artificial-intelligence/latest/rss",
+    fallbackUrls: ["https://www.wired.com/feed/", "https://www.wired.com/feed/rss"]
+  },
+  { 
+    name: "Forbes AI", 
+    primaryUrl: "https://www.forbes.com/ai/feed/",
+    fallbackUrls: ["https://www.forbes.com/innovation/feed/"]
+  },
+  { 
+    name: "ZDNet AI", 
+    primaryUrl: "https://www.zdnet.com/topic/artificial-intelligence/rss.xml",
+    fallbackUrls: ["https://www.zdnet.com/news/rss.xml"]
+  }
+];
+
+/**
+ * Checks if text contains AI model-related keywords
+ * @param {string} text - Text to analyze
+ * @return {boolean} - True if AI model mentions are found
+ */
+function containsAIModelKeywords(text) {
+  return getAIKeywords().containsAIModelKeywords(text);
+}
+// Save original implementation
+function extractAIModelInfoOriginal(text) {
+  // Copy your entire original extractAIModelInfo function here
+}
+
+// Replace with enhanced version
+function extractAIModelInfo(text) {
+  // Call the original implementation
+  const result = extractAIModelInfoOriginal(text);
+  
+  // If we found a model, use it to learn new patterns
+  if (result.modelName) {
+    getAIKeywords().learnFromVerifiedMention(text, result.modelName, result.organization);
+  }
+  
+  return result;
+}
+/**
+ * Extracts AI model information from text
+ * @param {string} text - Text to analyze
+ * @return {Object} - Extracted AI model information
+ */
+function extractAIModelInfo(text) {
+  if (!text) return { modelName: null, organization: null, category: null };
+  
+  // Convert to lowercase for case-insensitive matching
+  const lowerText = text.toLowerCase();
+  
+  // Initialize result object
+  const result = {
+    modelName: null,
+    organization: null,
+    category: null
+  };
+  
+  // Check for model names using regex patterns
+  const modelPatterns = [
+    { regex: /\b(gpt-[0-9.]+)\b/i, org: "OpenAI", cat: "Text Generation" },
+    { regex: /\b(claude[- ][0-9.]*(?:opus|sonnet|haiku)?)\b/i, org: "Anthropic", cat: "Text Generation" },
+    { regex: /\b(gemini[- ]?(?:pro|ultra|nano)?[- ]?[0-9.]*)\b/i, org: "Google", cat: "Multimodal" },
+    { regex: /\b(llama[- ]?[0-9.]*)\b/i, org: "Meta", cat: "Text Generation" },
+    { regex: /\b(dall-e[- ]?[0-9.]*)\b/i, org: "OpenAI", cat: "Image Generation" },
+    { regex: /\b(stable diffusion[- ]?[xl]?[- ]?[0-9.]*)\b/i, org: "Stability AI", cat: "Image Generation" },
+    { regex: /\b(midjourney[- ]?[v]?[0-9.]*)\b/i, org: "Midjourney", cat: "Image Generation" },
+    { regex: /\b(phi-[0-9.]+)\b/i, org: "Microsoft", cat: "Text Generation" }
+  ];
+  
+  // Try to identify specific model names
+  for (const pattern of modelPatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      result.modelName = match[1];
+      result.organization = pattern.org;
+      result.category = pattern.cat;
+      break;
+    }
+  }
+  
+  // If no specific model found, try to extract from context
+  if (!result.modelName) {
+    // Look for phrases like "X releases new Y model"
+    const releasePatterns = [
+      /\b(OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney)\b.{1,50}\b(?:releases?|announces?|launches?|introduces?|unveils?)\b.{1,50}\b([A-Za-z0-9-]+(?: [A-Za-z0-9]+){0,2})\b.{0,20}\b(?:model|AI|LLM)\b/i,
+      /\b(?:new|latest)\b.{1,30}\b([A-Za-z0-9-]+(?: [A-Za-z0-9]+){0,2})\b.{1,30}\b(?:model|AI|LLM)\b.{1,50}\b(OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney)\b/i
+    ];
+    
+    for (const pattern of releasePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        // If the pattern has the organization captured first
+        if (match[1] && /OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney/i.test(match[1])) {
+          result.organization = match[1];
+          result.modelName = match[2];
+        } 
+        // If the pattern has the model name captured first
+        else if (match[2] && /OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney/i.test(match[2])) {
+          result.modelName = match[1];
+          result.organization = match[2];
+        }
+        
+        if (result.modelName) break;
+      }
+    }
+  }
+  
+  // Determine category if not set
+  if (result.modelName && !result.category) {
+    if (/image|vision|diffusion|dalle|stable/i.test(lowerText)) {
+      result.category = "Image Generation";
+    } else if (/text|language|chat|llm|gpt|claude/i.test(lowerText)) {
+      result.category = "Text Generation";
+    } else if (/multi|both|audio|video/i.test(lowerText)) {
+      result.category = "Multimodal";
+    } else {
+      result.category = "Unknown";
+    }
+  }
+  
+  return result;
+}
+/**
+ * Extract articles from a newsletter website
+ * @param {string} html - The HTML content of the website
+ * @param {Object} source - The source object with selector information
+ * @return {Array} Array of article objects
+ */
+function extractArticlesFromWebsite(html, source) {
+  if (!html) return [];
+  
+  const articles = [];
+  
+  try {
+    // Extract article elements based on the source's selectors
+    const articlePattern = new RegExp(`<(${source.articleSelector.replace(/\./g, '').replace(/,/g, '|')})([^>]*)>([\\s\\S]*?)<\\/\\1>`, 'gi');
+    
+    let match;
+    while (match = articlePattern.exec(html)) {
+      const articleHtml = match[0];
+      
+      // Extract title
+      const titleRegex = new RegExp(`<${source.titleSelector}[^>]*>([\\s\\S]*?)<\/${source.titleSelector}>`, 'i');
+      const titleMatch = titleRegex.exec(articleHtml);
+      const title = titleMatch ? cleanHtml(titleMatch[1]) : "";
+      
+      // Extract link
+      const linkRegex = new RegExp(`<${source.linkSelector}[^>]*href="([^"]*)"[^>]*>`, 'i');
+      const linkMatch = linkRegex.exec(articleHtml);
+      let url = linkMatch ? linkMatch[1] : "";
+      
+      // Make URL absolute if it's relative
+      if (url && !url.startsWith('http')) {
+        if (url.startsWith('/')) {
+          // Extract domain from source URL
+          const domainMatch = /^(https?:\/\/[^\/]+)/i.exec(source.url);
+          if (domainMatch) {
+            url = domainMatch[1] + url;
+          }
+        } else {
+          url = source.url + (source.url.endsWith('/') ? '' : '/') + url;
+        }
+      }
+      
+      // Extract date if available
+      const dateRegex = new RegExp(`<(${source.dateSelector.replace(/\./g, '').replace(/,/g, '|')})([^>]*)>([\\s\\S]*?)<\\/\\1>`, 'i');
+      const dateMatch = dateRegex.exec(articleHtml);
+      
+      let date = null;
+      if (dateMatch) {
+        // Try to parse the date text
+        const dateText = cleanHtml(dateMatch[3]);
+        try {
+          // This is a simple approach - you might need more sophisticated date parsing
+          date = new Date(dateText);
+          if (isNaN(date.getTime())) {
+            // Try to parse with regex if standard parsing fails
+            const monthMatch = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* (\d{1,2}),? (\d{4})/i.exec(dateText);
+            if (monthMatch) {
+              const months = {
+                "jan": 0, "feb": 1, "mar": 2, "apr": 3, "may": 4, "jun": 5,
+                "jul": 6, "aug": 7, "sep": 8, "oct": 9, "nov": 10, "dec": 11
+              };
+              
+              const month = months[monthMatch[1].toLowerCase().substring(0, 3)];
+              const day = parseInt(monthMatch[2]);
+              const year = parseInt(monthMatch[3]);
+              
+              date = new Date(year, month, day);
+            } else {
+              date = new Date(); // Default to today
+            }
+          }
+        } catch (e) {
+          date = new Date(); // Default to today
+        }
+      } else {
+        date = new Date(); // Default to today
+      }
+      
+      // Extract description (use the first paragraph if available)
+      const descRegex = /<p[^>]*>([\s\S]*?)<\/p>/i;
+      const descMatch = descRegex.exec(articleHtml);
+      const description = descMatch ? cleanHtml(descMatch[1]) : "";
+      
+      // Only add if we found a title
+      if (title) {
+        articles.push({
+          title,
+          description,
+          url,
+          date
+        });
+      }
+    }
+    
+    return articles;
+    
+  } catch (error) {
+    Logger.log(`Error extracting articles from website: ${error.message}`);
+    return [];
+  }
+}
+/**
+ * Extract announcements from HTML content using the organization's selector
+ * @param {string} html - The HTML content of the website
+ * @param {Object} org - The organization object with selector information
+ * @return {Array} Array of announcement objects
+ */
+function extractAnnouncementsFromHTML(html, org) {
+  if (!html) return [];
+  
+  const announcements = [];
+  
+  try {
+    // We'll use different techniques based on the selector type
+    // Note: This is a simple approach - a real HTML parser would be better
+    
+    // For blog posts and news items
+    if (org.selector.includes('post') || org.selector.includes('news') || org.selector.includes('card') || org.selector.includes('item')) {
+      // Create a regex pattern to find HTML elements that match the selector class
+      // This is a simplified approach and may need adjustment for specific sites
+      const pattern = new RegExp(`<(div|article|section)[^>]*class="[^"]*${escapeRegExp(org.selector.replace('.', ''))}[^"]*"[^>]*>([\\s\\S]*?)</(div|article|section)>`, 'gi');
+      
+      // Extract all matching elements
+      let match;
+      while (match = pattern.exec(html)) {
+        const element = match[0];
+        
+        // Extract title
+        const titleMatch = /<h\d[^>]*>([\s\S]*?)<\/h\d>/i.exec(element);
+        const title = titleMatch ? cleanHtml(titleMatch[1]) : "";
+        
+        // Extract link
+        const linkMatch = /<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<\/a>/i.exec(element);
+        let url = linkMatch ? linkMatch[1] : "";
+        
+        // Make sure URL is absolute
+        if (url && !url.startsWith('http')) {
+          if (url.startsWith('/')) {
+            // Extract domain from org website
+            const domainMatch = /^(https?:\/\/[^\/]+)/i.exec(org.website);
+            if (domainMatch) {
+              url = domainMatch[1] + url;
+            }
+          } else {
+            url = org.website + (org.website.endsWith('/') ? '' : '/') + url;
+          }
+        }
+        
+        // Extract description
+        const descMatch = /<p[^>]*>([\s\S]*?)<\/p>/i.exec(element);
+        const description = descMatch ? cleanHtml(descMatch[1]) : "";
+        
+        // Extract date if available
+        const dateMatch = /<time[^>]*datetime="([^"]*)"[^>]*>|<span[^>]*class="[^"]*date[^"]*"[^>]*>([\s\S]*?)<\/span>/i.exec(element);
+        let date = null;
+        if (dateMatch) {
+          date = new Date(dateMatch[1] || dateMatch[2]);
+          if (isNaN(date.getTime())) date = today; // Default to today if invalid
+        }
+        
+        // Only add if we found a title and it contains AI-related keywords
+        if (title && containsAIModelKeywords(title + ' ' + description)) {
+          announcements.push({
+            title,
+            description,
+            url,
+            date
+          });
+        }
+      }
+    }
+    
+    // Filter announcements to those that mention AI models
+    return announcements.filter(a => 
+      containsAIModelKeywords(a.title + ' ' + a.description)
+    );
+    
+  } catch (error) {
+    Logger.log(`Error extracting announcements from HTML: ${error.message}`);
+    return [];
+  }
+}
+/**
+ * Enhanced website fetcher with fallbacks and advanced error handling
+ * @param {string} url - Primary URL to fetch
+ * @param {Array} fallbackUrls - Optional fallback URLs to try if primary fails
+ * @return {Object} - Response object with content and status
+ */
+function enhancedFetch(url, fallbackUrls = []) {
+  // Array of all URLs to try (primary first, then fallbacks)
+  const urlsToTry = [url, ...fallbackUrls];
+  
+  // Common fetch options with browser-like user agent
+  const options = {
+    'muteHttpExceptions': true,
+    'followRedirects': true,
+    'validateHttpsCertificates': false,
+    'timeout': 30,
+    'headers': {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5'
+    }
+  };
+  
+  // Try each URL in sequence
+  for (const currentUrl of urlsToTry) {
+    try {
+      Logger.log(`Attempting to fetch: ${currentUrl}`);
+      
+      const response = UrlFetchApp.fetch(currentUrl, options);
+      const responseCode = response.getResponseCode();
+      
+      // If successful, return the result
+      if (responseCode === 200) {
+        return {
+          success: true,
+          responseCode: responseCode,
+          content: response.getContentText(),
+          url: currentUrl,  // Return the URL that succeeded
+          error: null
+        };
+      }
+      
+      Logger.log(`Failed to fetch ${currentUrl} with response code ${responseCode}`);
+      
+      // If this was the last URL to try, return the error
+      if (currentUrl === urlsToTry[urlsToTry.length - 1]) {
+        return {
+          success: false,
+          responseCode: responseCode,
+          content: '',
+          url: currentUrl,
+          error: `HTTP Error: ${responseCode}`
+        };
+      }
+      
+      // Otherwise continue to the next fallback URL
+    } catch (error) {
+      Logger.log(`Error fetching ${currentUrl}: ${error.message}`);
+      
+      // If this was the last URL to try, return the error
+      if (currentUrl === urlsToTry[urlsToTry.length - 1]) {
+        return {
+          success: false,
+          responseCode: 0,
+          content: '',
+          url: currentUrl,
+          error: error.message
+        };
+      }
+      
+      // Otherwise continue to the next fallback URL
+    }
+  }
+  
+  // This shouldn't be reached but just in case
+  return {
+    success: false,
+    responseCode: 0,
+    content: '',
+    url: url,
+    error: 'All fetch attempts failed'
+  };
+}
+/**
+ * Clean HTML text by removing tags and decoding entities
+ * @param {string} html - The HTML text to clean
+ * @return {string} Cleaned text
+ */
+function cleanHtml(html) {
+  if (!html) return "";
+  
+  // Remove HTML tags
+  let text = html.replace(/<[^>]*>/g, ' ');
+  
+  // Decode HTML entities
+  text = text.replace(/&amp;/g, '&')
+             .replace(/&lt;/g, '<')
+             .replace(/&gt;/g, '>')
+             .replace(/&quot;/g, '"')
+             .replace(/&#39;/g, "'")
+             .replace(/&nbsp;/g, ' ');
+  
+  // Remove extra whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  return text;
+}
+
+/**
+ * Escape special characters in a string for use in a RegExp
+ * @param {string} string - The string to escape
+ * @return {string} Escaped string
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+/**
+ * Enhanced RSS feed processing with better error handling and fallbacks
+ * @param {string} primaryUrl - Primary URL of the RSS feed
+ * @param {Array} fallbackUrls - Optional fallback URLs to try if primary fails
+ * @return {Array} - Array of parsed feed items with AI model mentions
+ */
+function processRSSFeed(primaryUrl, fallbackUrls = []) {
+  try {
+    // Fetch the RSS feed with improved error handling and fallbacks
+    const fetchResult = enhancedFetch(primaryUrl, fallbackUrls);
+    
+    if (!fetchResult.success) {
+      Logger.log(`Failed to fetch feed from: ${primaryUrl} - ${fetchResult.error}`);
+      return [];
+    }
+    
+    const content = fetchResult.content;
+    const successfulUrl = fetchResult.url;
+    
+    // Log successful fetch for debugging
+    Logger.log(`Successfully fetched feed from: ${successfulUrl}`);
+    
+    // Check if content is valid XML
+    if (!content || !content.trim().startsWith('<?xml')) {
+      Logger.log(`Invalid XML format from: ${successfulUrl}`);
+      return [];
+    }
+    
+    // Try to parse XML
+    let document;
+    try {
+      document = XmlService.parse(content);
+    } catch (xmlError) {
+      Logger.log(`XML parsing error for ${successfulUrl}: ${xmlError.message}`);
+      return [];
+    }
+    
+    const root = document.getRootElement();
+    
+    // Detect feed type (RSS or Atom)
+    const feedItems = [];
+    
+    // Handle RSS format
+    if (root.getName() === 'rss') {
+      const channel = root.getChild('channel');
+      if (channel) {
+        const items = channel.getChildren('item');
+        
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          
+          const title = getElementText(item, 'title');
+          const link = getElementText(item, 'link');
+          const description = getElementText(item, 'description');
+          const pubDate = getElementText(item, 'pubDate');
+          
+          // Only process if title exists
+          if (title) {
+            feedItems.push({
+              title: title,
+              link: link,
+              description: description,
+              pubDate: pubDate,
+              source: successfulUrl
+            });
+          }
+        }
+      }
+    } 
+    // Handle Atom format
+    else if (root.getName() === 'feed') {
+      const entries = root.getChildren('entry');
+      
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        
+        const title = getElementText(entry, 'title');
+        const linkElement = entry.getChild('link', entry.getNamespace());
+        const link = linkElement ? linkElement.getAttribute('href').getValue() : '';
+        const description = getElementText(entry, 'content') || getElementText(entry, 'summary');
+        const pubDate = getElementText(entry, 'published') || getElementText(entry, 'updated');
+        
+        if (title) {
+          feedItems.push({
+            title: title,
+            link: link,
+            description: description,
+            pubDate: pubDate,
+            source: successfulUrl
+          });
+        }
+      }
+    }
+    
+    // Filter items containing AI model keywords
+    return feedItems.filter(item => 
+      containsAIModelKeywords(item.title) || 
+      containsAIModelKeywords(item.description)
+    );
+    
+  } catch (error) {
+    Logger.log(`Error processing RSS feed ${primaryUrl}: ${error.message}`);
+    return [];
+  }
+}
+/**
+ * Helper function to safely get text from an XML element
+ * @param {Element} element - XML element
+ * @param {string} childName - Name of child element
+ * @return {string} - Text content or empty string
+ */
+function getElementText(element, childName) {
+  const child = element.getChild(childName);
+  return child ? child.getText() : '';
+}
+/**
+ * Alternative approach: Use company's official RSS/Atom feeds when available
+ * This is more reliable than web scraping and should be preferred when possible
+ */
+function checkOrganizationRSSFeeds() {
+  const today = new Date();
+  const suggestions = [];
+  const researchLog = [];
+  
+  // Process organizations that have RSS feeds
+  for (const org of CONFIG.MONITORED_ORGS) {
+    // Skip if no blog feed is specified
+    if (!org.blogFeed) continue;
+    
+    try {
+      Logger.log(`Checking RSS feed for ${org.name}: ${org.blogFeed}`);
+      
+      // Use our improved RSS feed processor
+      const feedItems = processRSSFeed(org.blogFeed);
+      
+      Logger.log(`Found ${feedItems.length} relevant entries in the feed for ${org.name}`);
+      
+      // Process each item found
+      for (const item of feedItems) {
+        // Extract potential model information
+        const aiInfo = extractAIModelInfo(item.title + ' ' + item.description);
+        
+        if (aiInfo.modelName) {
+          suggestions.push({
+            name: aiInfo.modelName,
+            organization: org.name,
+            releaseDate: formatDate(item.pubDate ? new Date(item.pubDate) : today),
+            category: aiInfo.category || "Unknown",
+            source: "Blog RSS - " + org.name,
+            url: item.link,
+            notes: `Found in blog titled: "${item.title}"`,
+            status: "Needs Verification"
+          });
+          
+          researchLog.push([
+            formatDate(today),
+            org.name,
+            "RSS Feed",
+            org.blogFeed,
+            `Potential new model found: ${aiInfo.modelName}`,
+            `Blog: "${item.title}"`
+          ]);
+        }
+      }
+      
+      // Add a log entry if no models were found
+      if (!researchLog.find(entry => entry[1] === org.name && entry[2] === "RSS Feed")) {
+        researchLog.push([
+          formatDate(today),
+          org.name,
+          "RSS Feed",
+          org.blogFeed,
+          "No new models found",
+          ""
+        ]);
+      }
+      
+    } catch (error) {
+      Logger.log(`Error checking RSS feed for ${org.name}: ${error.message}`);
+      researchLog.push([
+        formatDate(today),
+        org.name,
+        "RSS Feed",
+        org.blogFeed,
+        "Error checking feed",
+        error.message
+      ]);
+    }
+  }
+  
+  // Update research log
+  appendToResearchLog(researchLog);
+  
+  return suggestions;
+}
+/**
+ * Main function to run the research assistant
+ * This can be triggered manually or on a schedule
+ */
+function runResearchAssistant() {
+  try {
+    Logger.log("Starting AI model research assistant...");
+    
+// Initialize AI keywords system
+const aiKeywords = getAIKeywords();
+
+    // Create necessary sheets if they don't exist
+    setupRequiredSheets();
+    
+    // Get current model data
+    const existingModels = getCurrentModels();
+    
+    // Find potential new models from various sources
+    const potentialNewModels = [];
+    
+    // 1. Check for new releases from known organizations
+    const orgSuggestions = checkOrganizationWebsites();
+    potentialNewModels.push(...orgSuggestions);
+
+    // 1b. Check organization RSS feeds (add this line)
+    const orgRssSuggestions = checkOrganizationRSSFeeds();
+    potentialNewModels.push(...orgRssSuggestions);
+    
+    // 2. Scan tech news for AI announcements
+    const newsSuggestions = scanTechNews();
+    potentialNewModels.push(...newsSuggestions);
+    
+    // 3. Look for potential gaps in the dataset
+    const gapSuggestions = identifyDataGaps(existingModels);
+    potentialNewModels.push(...gapSuggestions);
+    
+    // 4. Add the suggestions to the suggestions sheet
+    addSuggestions(potentialNewModels);
+    
+    // 5. Update the research log
+    updateResearchLog();
+    
+    // Optional: Send email notification about new suggestions
+    sendResearchNotification(potentialNewModels.length);
+    
+    Logger.log(`Research assistant run completed. Found ${potentialNewModels.length} potential new models.`);
+    
+  } catch (error) {
+    Logger.log(`Error during research assistant run: ${error.message}`);
+    // Optional: Send error notification
+  }
+}
+
+/**
+ * Set up the required sheets if they don't exist
+ */
+function setupRequiredSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // Check and create Suggestions sheet if needed
+  if (!ss.getSheetByName(CONFIG.SHEET_NAMES.SUGGESTIONS)) {
+    const suggestionsSheet = ss.insertSheet(CONFIG.SHEET_NAMES.SUGGESTIONS);
+    const headers = [
+      "Suggested Model Name", 
+      "Organization", 
+      "Estimated Release Date", 
+      "Category", 
+      "Source", 
+      "URL", 
+      "Notes", 
+      "Status",
+      "Date Added"
+    ];
+    suggestionsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    suggestionsSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+    suggestionsSheet.setFrozenRows(1);
+  }
+  
+  // Check and create Research Log sheet if needed
+  if (!ss.getSheetByName(CONFIG.SHEET_NAMES.RESEARCH_LOG)) {
+    const logSheet = ss.insertSheet(CONFIG.SHEET_NAMES.RESEARCH_LOG);
+    const headers = [
+      "Date", 
+      "Source Checked", 
+      "Type", 
+      "URL", 
+      "Results", 
+      "Notes"
+    ];
+    logSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    logSheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+    logSheet.setFrozenRows(1);
+  }
+}
+
+/**
+ * Get current models from the spreadsheet
+ * @return {Array} Array of existing model objects
+ */
+function getCurrentModels() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const modelsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.MODELS);
+  
+  if (!modelsSheet) {
+    Logger.log(`Sheet "${CONFIG.SHEET_NAMES.MODELS}" not found.`);
+    return [];
+  }
+  
+  const dataRange = modelsSheet.getDataRange();
+  const values = dataRange.getValues();
+  
+  const headers = values[0];
+  const modelNameIndex = headers.indexOf("ModelName");
+  const orgNameIndex = headers.indexOf("OrganizationName");
+  
+  if (modelNameIndex === -1 || orgNameIndex === -1) {
+    Logger.log("Required columns not found in models sheet.");
+    return [];
+  }
+  
+  // Create array of model objects (just name and org for now)
+  const models = [];
+  for (let i = 1; i < values.length; i++) {
+    models.push({
+      name: values[i][modelNameIndex],
+      organization: values[i][orgNameIndex]
+    });
+  }
+  
+  return models;
+}
+
+/**
+ * Check organization websites for new model announcements using web scraping
+ * @return {Array} Array of potential new model objects
+ */
+function checkOrganizationWebsites() {
+  const today = new Date();
+  const suggestions = [];
+  const researchLog = [];
+  
+  // Get list of model names we already have to avoid duplicates
+  const existingModels = getCurrentModels();
+  const existingModelNames = existingModels.map(model => model.name.toLowerCase());
+  
+  // Process each organization in our monitoring list
+  for (const org of CONFIG.MONITORED_ORGS) {
+    try {
+      Logger.log(`Checking website for ${org.name}: ${org.website}`);
+      
+      // Fetch the website content
+      const options = {
+        'muteHttpExceptions': true,
+        'followRedirects': true,
+        'validateHttpsCertificates': false
+      };
+      
+      const response = UrlFetchApp.fetch(org.website, options);
+      
+      // Check if the request was successful
+      if (response.getResponseCode() === 200) {
+        const content = response.getContentText();
+        
+        // Extract potential model announcements using the organization's selector pattern
+        const announcements = extractAnnouncementsFromHTML(content, org);
+        
+        Logger.log(`Found ${announcements.length} potential announcements for ${org.name}`);
+        
+        for (const announcement of announcements) {
+          // Extract AI model information
+          const aiInfo = extractAIModelInfo(announcement.title + ' ' + announcement.description);
+          
+          // If we found a model name and it's not in our database already
+          if (aiInfo.modelName && !existingModelNames.includes(aiInfo.modelName.toLowerCase())) {
+            // Create a suggestion entry
+            suggestions.push({
+              name: aiInfo.modelName,
+              organization: org.name,
+              releaseDate: formatDate(announcement.date || today),
+              category: aiInfo.category || "Unknown",
+              source: "Website - " + org.name,
+              url: announcement.url || org.website,
+              notes: `Found on ${org.name} website: "${announcement.title}"`,
+              status: "Needs Verification"
+            });
+            
+            researchLog.push([
+              formatDate(today),
+              org.name,
+              "Website",
+              announcement.url || org.website,
+              `Potential new model found: ${aiInfo.modelName}`,
+              `Announcement: "${announcement.title}"`
+            ]);
+          }
+        }
+        
+        // If no models were found, add a log entry
+        if (!researchLog.find(entry => entry[1] === org.name)) {
+          researchLog.push([
+            formatDate(today),
+            org.name,
+            "Website",
+            org.website,
+            "No new models found",
+            ""
+          ]);
+        }
+      } else {
+        // Log an error if the website couldn't be accessed
+        Logger.log(`Failed to access ${org.name} website: ${response.getResponseCode()}`);
+        researchLog.push([
+          formatDate(today),
+          org.name,
+          "Website",
+          org.website,
+          `Error: HTTP ${response.getResponseCode()}`,
+          "Failed to access website"
+        ]);
+      }
+    } catch (error) {
+      // Log any errors that occur
+      Logger.log(`Error checking ${org.name} website: ${error.message}`);
+      researchLog.push([
+        formatDate(today),
+        org.name,
+        "Website",
+        org.website,
+        "Error checking website",
+        error.message
+      ]);
+    }
+  }
+  
+  // Update research log
+  appendToResearchLog(researchLog);
+  
+  return suggestions;
+}
+
+/**
+ * Scan tech news sources for AI model announcements using RSS feeds, News API, and newsletters
+ * @return {Array} Array of potential new model objects
+ */
+function scanTechNews() {
+  const today = new Date();
+  const suggestions = [];
+  const researchLog = [];
+  
+  // 1. Scan RSS feeds from tech news sources with improved URLs and fallbacks
+  for (const source of UPDATED_RSS_FEEDS) {
+    try {
+      Logger.log(`Checking RSS feed: ${source.name} - ${source.primaryUrl}`);
+      
+      // Use our improved RSS feed processor with fallbacks
+      const feedItems = processRSSFeed(source.primaryUrl, source.fallbackUrls || []);
+      
+      Logger.log(`Found ${feedItems.length} relevant entries in ${source.name} feed`);
+      
+      // Process each feed item
+      for (const item of feedItems) {
+        // Extract potential model information
+        const aiInfo = extractAIModelInfo(item.title + ' ' + item.description);
+        
+        if (aiInfo.modelName) {
+          suggestions.push({
+            name: aiInfo.modelName,
+            organization: aiInfo.organization || "Unknown",
+            releaseDate: formatDate(item.pubDate ? new Date(item.pubDate) : today),
+            category: aiInfo.category || "Unknown",
+            source: "Tech News - " + source.name,
+            url: item.link,
+            notes: `Found in article titled: "${item.title}"`,
+            status: "Needs Verification"
+          });
+          
+          researchLog.push([
+            formatDate(today),
+            source.name,
+            "RSS Feed",
+            item.source, // Use the successful URL
+            `Potential new model found: ${aiInfo.modelName} from ${aiInfo.organization || "Unknown"}`,
+            `Article: "${item.title}"`
+          ]);
+        }
+      }
+      
+      // Add a log entry even if we didn't find anything
+      if (!researchLog.find(entry => entry[1] === source.name)) {
+        researchLog.push([
+          formatDate(today),
+          source.name,
+          "RSS Feed",
+          source.primaryUrl,
+          feedItems.length > 0 ? "No new models found" : "Error checking feed",
+          ""
+        ]);
+      }
+    } catch (error) {
+      Logger.log(`Error scanning RSS feed ${source.name}: ${error.message}`);
+      researchLog.push([
+        formatDate(today),
+        source.name,
+        "RSS Feed",
+        source.primaryUrl,
+        "Error checking feed",
+        error.message
+      ]);
+    }
+  }
+  
+  // 2. NEW: Scan newsletter websites for AI model mentions
+  for (const source of CONFIG.NEWSLETTER_SOURCES) {
+    try {
+      Logger.log(`Checking newsletter: ${source.name} - ${source.url}`);
+      
+      // Fetch the website content using enhanced fetch
+      const fetchResult = enhancedFetch(source.url);
+      
+      if (!fetchResult.success) {
+        Logger.log(`Failed to fetch from: ${source.url} - ${fetchResult.error}`);
+        researchLog.push([
+          formatDate(today),
+          source.name,
+          "Newsletter",
+          source.url,
+          "Error fetching website",
+          fetchResult.error
+        ]);
+        continue;
+      }
+      
+      // Extract articles using our dedicated function
+      const articles = extractArticlesFromWebsite(fetchResult.content, source);
+      
+      Logger.log(`Found ${articles.length} articles from ${source.name}`);
+      
+      // Process each article
+      for (const article of articles) {
+        // Only process if it contains AI model keywords
+        if (containsAIModelKeywords(article.title + ' ' + article.description)) {
+          // Extract potential model information
+          const aiInfo = extractAIModelInfo(article.title + ' ' + article.description);
+          
+          if (aiInfo.modelName) {
+            suggestions.push({
+              name: aiInfo.modelName,
+              organization: aiInfo.organization || "Unknown",
+              releaseDate: formatDate(article.date || today),
+              category: aiInfo.category || "Unknown",
+              source: "Newsletter - " + source.name,
+              url: article.url,
+              notes: `Found in newsletter article: "${article.title}"`,
+              status: "Needs Verification"
+            });
+            
+            researchLog.push([
+              formatDate(today),
+              source.name,
+              "Newsletter",
+              article.url,
+              `Potential new model found: ${aiInfo.modelName} from ${aiInfo.organization || "Unknown"}`,
+              `Article: "${article.title}"`
+            ]);
+          }
+        }
+      }
+      
+      // Add a log entry if no models were found
+      if (!researchLog.find(entry => entry[1] === source.name && entry[2] === "Newsletter")) {
+        researchLog.push([
+          formatDate(today),
+          source.name,
+          "Newsletter",
+          source.url,
+          articles.length > 0 ? "No new models found" : "No articles found",
+          ""
+        ]);
+      }
+      
+    } catch (error) {
+      Logger.log(`Error processing newsletter ${source.name}: ${error.message}`);
+      researchLog.push([
+        formatDate(today),
+        source.name,
+        "Newsletter",
+        source.url,
+        "Error processing newsletter",
+        error.message
+      ]);
+    }
+  }
+  
+  // 3. Use News API to search for AI model announcements
+  // Note: This requires an API key from newsapi.org
+  if (CONFIG.NEWS_API_KEY) {
+    try {
+      Logger.log("Checking News API for AI model announcements");
+      
+      // Define search queries for AI models
+      const queries = [
+        "new AI model release",
+        "launched new language model",
+        "announced GPT",
+        "new LLM model",
+        "AI model unveils"
+      ];
+      
+      for (const query of queries) {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${CONFIG.NEWS_API_KEY}&language=en&sortBy=publishedAt&pageSize=10`;
+        
+        const response = UrlFetchApp.fetch(url);
+        const data = JSON.parse(response.getContentText());
+        
+        if (data.status === "ok" && data.articles && data.articles.length > 0) {
+          Logger.log(`Found ${data.articles.length} articles for query: ${query}`);
+          
+          for (const article of data.articles) {
+            // Check if this is a relevant article
+            if (containsAIModelKeywords(article.title + ' ' + article.description)) {
+              // Extract potential organization and model names
+              const aiInfo = extractAIModelInfo(article.title + ' ' + article.description);
+              
+              if (aiInfo.modelName) {
+                suggestions.push({
+                  name: aiInfo.modelName,
+                  organization: aiInfo.organization || "Unknown",
+                  releaseDate: formatDate(article.publishedAt ? new Date(article.publishedAt) : today),
+                  category: aiInfo.category || "Unknown",
+                  source: "News API - " + article.source.name,
+                  url: article.url,
+                  notes: `Found in article titled: "${article.title}"`,
+                  status: "Needs Verification"
+                });
+                
+                researchLog.push([
+                  formatDate(today),
+                  "News API - " + article.source.name,
+                  "News API",
+                  article.url,
+                  `Potential new model found: ${aiInfo.modelName} from ${aiInfo.organization || "Unknown"}`,
+                  `Article: "${article.title}"`
+                ]);
+              }
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      Logger.log(`Error using News API: ${error.message}`);
+      researchLog.push([
+        formatDate(today),
+        "News API",
+        "API",
+        "https://newsapi.org",
+        "Error checking News API",
+        error.message
+      ]);
+    }
+  }
+  
+  // Update research log
+  appendToResearchLog(researchLog);
+  
+  return suggestions;
+}
+
+/**
+ * Identify potential gaps in the dataset
+ * This function looks at patterns in the data to suggest missing models
+ * @param {Array} existingModels - Array of existing model objects
+ * @return {Array} Array of potential missing model objects
+ */
+function identifyDataGaps(existingModels) {
+  // SIMULATION: In a real implementation, this would use more sophisticated
+  // pattern matching and analysis
+  
+  const today = new Date();
+  const suggestions = [];
+  
+  // Track organizations by name for easy lookup
+  const organizations = {};
+  for (const model of existingModels) {
+    if (!organizations[model.organization]) {
+      organizations[model.organization] = 0;
+    }
+    organizations[model.organization]++;
+  }
+  
+  // Look for potential gaps - organizations with few models compared to peers
+  const orgEntries = Object.entries(organizations);
+  const totalOrgs = orgEntries.length;
+  const totalModels = existingModels.length;
+  const avgModelsPerOrg = totalModels / totalOrgs;
+  
+  for (const [orgName, modelCount] of orgEntries) {
+    // If this org has significantly fewer models than average
+    if (modelCount < avgModelsPerOrg * 0.5) {
+      // Suggest to research more models from this organization
+      suggestions.push({
+        name: "[Research Needed]",
+        organization: orgName,
+        releaseDate: "",
+        category: "Unknown",
+        source: "Gap Analysis",
+        url: "",
+        notes: `This organization has ${modelCount} models in the database, which is below the average of ${Math.round(avgModelsPerOrg)}. Consider researching if there are missing models.`,
+        status: "Research Gap"
+      });
+    }
+  }
+  
+  return suggestions;
+}
+
+/**
+ * Add potential new models to the suggestions sheet
+ * @param {Array} suggestions - Array of suggestion objects
+ */
+function addSuggestions(suggestions) {
+  if (suggestions.length === 0) {
+    Logger.log("No new suggestions to add.");
+    return;
+  }
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SUGGESTIONS);
+  
+  if (!sheet) {
+    Logger.log(`Sheet "${CONFIG.SHEET_NAMES.SUGGESTIONS}" not found.`);
+    return;
+  }
+  
+  // Limit number of suggestions to avoid overwhelming
+  const limitedSuggestions = suggestions.slice(0, CONFIG.MAX_SUGGESTIONS);
+  
+  // Prepare data rows
+  const today = new Date();
+  const rows = limitedSuggestions.map(suggestion => [
+    suggestion.name,
+    suggestion.organization,
+    suggestion.releaseDate,
+    suggestion.category,
+    suggestion.source,
+    suggestion.url,
+    suggestion.notes,
+    suggestion.status,
+    formatDate(today)
+  ]);
+  
+  // Add new rows
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  if (rows.length > 0) {
+    sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  
+  Logger.log(`Added ${rows.length} new suggestions to the sheet.`);
+}
+
+/**
+ * Append entries to the research log
+ * @param {Array} logEntries - Array of log entry rows
+ */
+function appendToResearchLog(logEntries) {
+  if (logEntries.length === 0) {
+    return;
+  }
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RESEARCH_LOG);
+  
+  if (!sheet) {
+    Logger.log(`Sheet "${CONFIG.SHEET_NAMES.RESEARCH_LOG}" not found.`);
+    return;
+  }
+  
+  // Add new rows
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  sheet.getRange(lastRow + 1, 1, logEntries.length, logEntries[0].length).setValues(logEntries);
+}
+
+/**
+ * Update the research log with a summary entry
+ */
+function updateResearchLog() {
+  const today = new Date();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.SHEET_NAMES.RESEARCH_LOG);
+  
+  if (!sheet) {
+    return;
+  }
+  
+  const summaryEntry = [
+    formatDate(today),
+    "SUMMARY",
+    "Research Run",
+    "",
+    `Completed research run. Checked ${CONFIG.MONITORED_ORGS.length} organization websites and ${CONFIG.NEWS_SOURCES.length} news sources.`,
+    ""
+  ];
+  
+  const lastRow = Math.max(sheet.getLastRow(), 1);
+  sheet.getRange(lastRow + 1, 1, 1, summaryEntry.length).setValues([summaryEntry]);
+}
+
+/**
+ * Send a notification email about new research suggestions
+ * @param {number} suggestionCount - Number of new suggestions
+ */
+function sendResearchNotification(suggestionCount) {
+  if (suggestionCount === 0) {
+    return;
+  }
+  
+  const email = Session.getActiveUser().getEmail();
+  const subject = `AI Snowball: ${suggestionCount} new model suggestions ready for review`;
+  const body = `
+    The AI Snowball Research Assistant has completed its latest run and found ${suggestionCount} potential new AI models to add to your database.
+    
+    Please review the Research_Suggestions sheet to verify these models and add them to your main database if appropriate.
+    
+    This is an automated message from your AI Snowball Research Assistant.
+  `;
+  
+  GmailApp.sendEmail(email, subject, body);
+}
+
+/**
+ * Set up a time-based trigger to run the research assistant periodically
+ */
+function createResearchTrigger() {
+  // Delete any existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "runResearchAssistant") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Create a new weekly trigger
+  ScriptApp.newTrigger("runResearchAssistant")
+    .timeBased()
+    .everyDays(CONFIG.RESEARCH_INTERVAL_DAYS)
+    .create();
+  
+  Logger.log(`Research assistant trigger set to run every ${CONFIG.RESEARCH_INTERVAL_DAYS} days.`);
+}
+
+/**
+ * Helper function to format a date as YYYY-MM-DD
+ * @param {Date} date - The date to format
+ * @return {string} Formatted date string
+ */
+function formatDate(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+/**
+ * Demo helper function to generate a plausible model name for demo purposes
+ * @param {string} orgName - Organization name
+ * @return {string} A generated model name
+ */
+function generateDemoModelName(orgName) {
+  const prefixes = {
+    "OpenAI": ["GPT-", "DALL-E ", "Whisper ", "Codex "],
+    "Anthropic": ["Claude ", "Claude Instant ", "Claude Pro "],
+    "Google DeepMind": ["Gemini ", "PaLM ", "Imagen ", "AlphaFold "],
+    "Meta AI": ["Llama ", "AudioCraft ", "Massively Multilingual "],
+    "Microsoft Research": ["Phi-", "Copilot ", "Kosmos "],
+    "default": ["AI-", "Neural ", "Gen ", "Advanced "]
+  };
+  
+  const suffixes = ["Next", "Pro", "Advanced", "2025", "Ultra", "V2", "Plus", "Max"];
+  
+  // Get organization-specific prefixes or use default
+  const orgPrefixes = prefixes[orgName] || prefixes.default;
+  
+  // Generate a random model name
+  const prefix = orgPrefixes[Math.floor(Math.random() * orgPrefixes.length)];
+  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+  
+  // Add version numbers for some models
+  const includeVersion = Math.random() > 0.5;
+  const version = includeVersion ? Math.floor(Math.random() * 5) + 1 : "";
+  
+  return `${prefix}${version} ${suffix}`.trim();
+}
+
+/**
+ * Run the research assistant manually
+ */
+function manualResearch() {
+  runResearchAssistant();
+}

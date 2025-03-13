@@ -1,0 +1,758 @@
+/**
+ * Enhanced AI Model Keywords System
+ * This system provides a more comprehensive and dynamic approach to detecting AI model mentions
+ */
+
+// Base comprehensive keyword list
+const COMPREHENSIVE_AI_KEYWORDS = {
+  // Model naming patterns - expanded with version variations
+  modelPatterns: [
+    // GPT family
+    'gpt-', 'gpt2', 'gpt3', 'gpt4', 'gpt-3.5', 'gpt-4', 'gpt-j', 'gpt-neo', 'chatgpt', 'gpt-4o', 'gpt-4 turbo',
+    
+    // Claude family
+    'claude', 'claude-', 'claude instant', 'claude 2', 'claude 3', 'claude-3', 'claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku', 'anthropic claude',
+    
+    // Google models
+    'gemini', 'gemini pro', 'gemini ultra', 'gemini nano', 'palm', 'bard', 'gemma', 
+    
+    // Meta models
+    'llama', 'llama-', 'llama2', 'llama 2', 'llama 3', 'llama-3', 'llama-70b', 'meta llama',
+    
+    // Microsoft models
+    'phi-', 'phi-1', 'phi-2', 'phi-3', 'turing-nlg', 'microsoft phi',
+    
+    // Other text models
+    'falcon', 'falcon-', 'mistral', 'mistral-', 'mixtral', 'yi', 'qwen', 'baichuan', 'bert', 'roberta', 'electra', 't5', 'ernie',
+    'galactica', 'chinchilla', 'pythia', 'bloom', 'olmo', 'mpt', 'vicuna', 'command', 'command r', 'command r+',
+    
+    // Image generation models
+    'dall-e', 'dall-e 2', 'dall-e 3', 'dall-e-3', 'midjourney', 'midjourney v', 'stable diffusion', 'sd', 'sd-xl', 
+    'imagen', 'parti', 'firefly', 'sora', 'emu', 'juggernaut', 'runway gen', 'dream studio',
+    
+    // Audio/Video models
+    'whisper', 'vall-e', 'suno', 'xtts', 'audiocraft', 'musicgen', 'soundraw', 'runway gen-2',
+    
+    // Multimodal models
+    'cm3leon', 'cm3', 'fuyu', 'gpt-4v', 'gpt4-vision', 'claude vision', 'gemini vision', 'prismer', 'flamingo',
+    
+    // Code models
+    'codex', 'codebert', 'codetf', 'starcoder', 'codegeex', 'codellama', 'deepseekcoder', 'wizardcoder'
+  ],
+  
+  // Expanded company list
+  companies: [
+    // Major players
+    'openai', 'anthropic', 'google', 'meta', 'microsoft', 'deepmind', 'stability ai', 'hugging face', 'ai21', 'cohere',
+    
+    // Additional companies
+    'mistral ai', 'databricks', 'nvidia', 'amazon', 'aws', 'inflection', 'inflection ai', 'apple', 'baidu', 'tencent', 
+    'alibaba', 'salesforce', 'ibm', 'adobe', 'runway', 'stability', 'midjourney', 'character ai', 'replicate',
+    'together ai', 'cerebras', 'perplexity', 'perplexity ai', 'adept', 'deepset', 'aleph alpha', 'lightspeed ai',
+    'claude ai', 'mosaic ml', 'eleuther ai', 'xai', 'groq', 'anyscale', 'scale ai', 'jina ai', 'nvidia',
+    'technology innovation institute', 'tii', 'apple', 'lightning ai', 'nousresearch', 'rift'
+  ],
+  
+  // Expanded model types and capabilities
+  modelTypes: [
+    // Model types
+    'large language model', 'llm', 'foundation model', 'transformer', 'diffusion model', 'multimodal', 'multilingual',
+    'text-to-image', 'text-to-speech', 'text-to-video', 'image-to-text', 'image-to-image', 'speech-to-text',
+    'text-to-3d', 'text-to-music', 'vision-language model', 'vlm', 'vision model', 'audio model', 'language model',
+    'base model', 'instruction-tuned', 'fine-tuned', 'mixture of experts', 'moe', 'transformer', 'autoregressive',
+    'diffusion', 'generative', 'generative ai', 'gen ai', 'emergent', 'latent diffusion', 'small language model', 'slm',
+    'sparse model', 'agent', 'ai agent', 'multi-agent', 'autonomous agent', 'agentic', 'reasoning', 'tool-using',
+    'retrieval-augmented generation', 'rag', 'code generation', 'text generation', 'image generation', 'video generation',
+    
+    // Capabilities and features
+    'multi-turn', 'long-context', 'few-shot learning', 'zero-shot', 'one-shot', 'chain-of-thought', 'cot', 
+    'context window', 'reasoning', 'planning', 'visual reasoning', 'multimodal reasoning', 'tool use', 'agentic',
+    'prompt engineering', 'prompt tuning', 'parameter-efficient fine-tuning', 'peft', 'lora', 'qlora', 'instruction tuning',
+    'alignment', 'rlhf', 'reinforcement learning from human feedback', 'constitutional ai', 'cai', 'dpo',
+    'direct preference optimization', 'constitutional reinforcement learning', 'constitutional ai', 'safety',
+    'training', 'fine-tuning', 'parameters', 'billion parameters', 'trillion parameters', 'tokens', 'context length',
+    'parameter count', 'inference', 'inference optimization', 'quantization', 'distillation', 'pruning'
+  ],
+  
+  // Expanded release related terms
+  releaseTerms: [
+    'launch', 'release', 'announce', 'unveil', 'debut', 'introduce', 'new model', 'preview', 'alpha', 'beta',
+    'general availability', 'ga', 'public release', 'early access', 'limited access', 'researchers access',
+    'developer access', 'api access', 'research preview', 'technical report', 'paper', 'published', 'preprint',
+    'released', 'announced', 'launched', 'unveiled', 'presented', 'showcased', 'revealed', 'teased', 'leaked',
+    'coming soon', 'now available', 'rolling out', 'in development', 'trained', 'pretrained', 'fine-tuned'
+  ],
+  
+  // Model size and performance indicators
+  modelMetrics: [
+    'billion parameters', 'b parameters', 'trillion parameters', 't parameters', 'million parameters', 'm parameters',
+    'params', 'parameters', '1b', '7b', '13b', '70b', '8b', '3b', '34b', '180b', 
+    'context window', 'context length', '4k context', '8k context', '16k', '32k', '64k', '100k', '128k', '1m context',
+    'trillion tokens', 'billion tokens', 'training tokens', 'training data', 'benchmark', 'sota', 'state-of-the-art',
+    'outperforms', 'surpasses', 'beats', 'tops leaderboard', 'ranks first', 'achieves', 'scores', 'accuracy',
+    'mmlu', 'hellaswag', 'truthfulqa', 'gsm8k', 'math', 'reasoning', 'lmsys', 'chatbot arena', 'benchmarks'
+  ],
+  
+  // Common AI research terms that might appear alongside model announcements
+  researchTerms: [
+    'paper', 'research', 'preprint', 'arxiv', 'publication', 'journal', 'conference', 'neurips', 'icml', 'iclr',
+    'acl', 'cvpr', 'emnlp', 'research paper', 'technical report', 'blog post', 'results', 'findings', 'ablation',
+    'architecture', 'attention mechanism', 'attention', 'layers', 'scaling laws', 'emergent abilities', 'alignment',
+    'evaluation', 'human evaluation', 'human preference', 'red teaming', 'safety', 'capabilities', 'ethical ai',
+    'responsible ai', 'efficient inference', 'training', 'pretraining', 'tokenization', 'embeddings'
+  ]
+};
+
+/**
+ * Dynamic AI Model Keywords that adapt over time
+ * This class maintains a list of AI model keywords that can be updated based on discoveries
+ */
+class DynamicAIKeywords {
+  constructor(baseKeywords = COMPREHENSIVE_AI_KEYWORDS) {
+    this.keywords = JSON.parse(JSON.stringify(baseKeywords));
+    this.discoveredTerms = {
+      modelPatterns: new Set(),
+      companies: new Set(),
+      modelTypes: new Set(),
+      releaseTerms: new Set(),
+      modelMetrics: new Set(),
+      researchTerms: new Set()
+    };
+    this.learnedPatterns = [];
+    this.lastUpdated = new Date();
+  }
+  
+  /**
+   * Check if text contains AI model-related keywords
+   * @param {string} text - Text to analyze
+   * @return {boolean} - True if AI model mentions are found
+   */
+  containsAIModelKeywords(text) {
+    if (!text) return false;
+    
+    // Convert to lowercase for case-insensitive matching
+    const lowerText = text.toLowerCase();
+    
+    // Check each category of keywords
+    for (const category in this.keywords) {
+      for (const keyword of this.keywords[category]) {
+        if (lowerText.includes(keyword)) {
+          return true;
+        }
+      }
+    }
+    
+    // Also check learned patterns if any exist
+    for (const pattern of this.learnedPatterns) {
+      if (pattern.test(lowerText)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Learn new keywords from a verified AI model mention
+   * @param {string} text - Text containing verified AI model mention
+   * @param {string} modelName - The verified model name
+   * @param {string} organization - The organization that created the model
+   */
+  learnFromVerifiedMention(text, modelName, organization) {
+    if (!text || !modelName) return;
+    
+    const lowerText = text.toLowerCase();
+    const lowerModelName = modelName.toLowerCase();
+    
+    // Add the model name pattern if it's not already covered
+    let covered = false;
+    for (const pattern of this.keywords.modelPatterns) {
+      if (lowerModelName.includes(pattern) || pattern.includes(lowerModelName)) {
+        covered = true;
+        break;
+      }
+    }
+    
+    if (!covered) {
+      // Extract a pattern from the model name (e.g., "GPT-4" -> "gpt-")
+      const basePattern = this.extractBasePattern(lowerModelName);
+      if (basePattern && basePattern.length > 2) {
+        this.discoveredTerms.modelPatterns.add(basePattern);
+      }
+    }
+    
+    // Add the organization if it's new
+    if (organization && !this.keywords.companies.includes(organization.toLowerCase())) {
+      this.discoveredTerms.companies.add(organization.toLowerCase());
+    }
+    
+    // Look for potential model type descriptions
+    const typePatterns = [
+      /(?:is|a|an|the)\s+([a-z-]+(?:\s+[a-z-]+){0,3})\s+(?:model|ai|system|assistant|tool)/gi,
+      /new\s+([a-z-]+(?:\s+[a-z-]+){0,3})\s+(?:model|system|framework)/gi,
+      /([a-z-]+(?:\s+[a-z-]+){0,3})\s+capabilities/gi
+    ];
+    
+    for (const pattern of typePatterns) {
+      const matches = [...lowerText.matchAll(pattern)];
+      for (const match of matches) {
+        if (match[1] && match[1].length > 3 && !this.isCommonWord(match[1])) {
+          this.discoveredTerms.modelTypes.add(match[1].toLowerCase());
+        }
+      }
+    }
+    
+    // Learn model size patterns
+    const sizePatterns = [
+      /(\d+(?:\.\d+)?)\s*(?:b|billion|t|trillion|m|million)\s*(?:param(?:eter)?s?)/gi,
+      /(\d+)(?:k|m)\s+(?:context|window|tokens)/gi
+    ];
+    
+    for (const pattern of sizePatterns) {
+      const matches = [...lowerText.matchAll(pattern)];
+      for (const match of matches) {
+        if (match[0]) {
+          this.discoveredTerms.modelMetrics.add(match[0].toLowerCase());
+        }
+      }
+    }
+    
+    // Update the keywords with newly discovered terms
+    this.updateKeywords();
+  }
+  
+  /**
+   * Extract a base pattern from a model name
+   * @param {string} modelName - The model name to analyze
+   * @return {string} - Extracted base pattern
+   */
+  extractBasePattern(modelName) {
+    // Try to identify the model family prefix
+    // Examples: "GPT-4" -> "gpt-", "Claude-2" -> "claude-"
+    
+    // Remove common version patterns
+    const normalized = modelName.replace(/\s+v\d+(\.\d+)*|\s+\d+(\.\d+)*|-\d+(\.\d+)*$/i, '');
+    
+    // If name has a hyphen, use the part before the hyphen with the hyphen
+    if (normalized.includes('-')) {
+      const prefix = normalized.split('-')[0] + '-';
+      return prefix.toLowerCase();
+    }
+    
+    // If name has a space, use the part before the space
+    if (normalized.includes(' ')) {
+      const prefix = normalized.split(' ')[0];
+      return prefix.toLowerCase();
+    }
+    
+    // If it's a single word, use it directly if it's not too short
+    if (normalized.length > 3) {
+      return normalized.toLowerCase();
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Check if a word is too common to be a meaningful model type
+   * @param {string} word - Word to check
+   * @return {boolean} - True if it's a common word
+   */
+  isCommonWord(word) {
+    const commonWords = [
+      'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'be', 'been',
+      'as', 'in', 'on', 'at', 'by', 'for', 'with', 'about', 'against', 'between',
+      'into', 'through', 'during', 'before', 'after', 'above', 'below', 'from', 'to',
+      'have', 'has', 'had', 'not', 'very', 'that', 'this', 'these', 'those', 'they',
+      'new', 'old', 'good', 'better', 'best', 'bad', 'worse', 'worst', 'high', 'low',
+      'more', 'most', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'so', 'than',
+      'too', 'can', 'will', 'just', 'should', 'now'
+    ];
+    
+    return commonWords.includes(word.toLowerCase().trim());
+  }
+  
+  /**
+   * Update keywords with newly discovered terms
+   */
+  updateKeywords() {
+    // Add discovered terms to the respective categories
+    for (const category in this.discoveredTerms) {
+      for (const term of this.discoveredTerms[category]) {
+        if (!this.keywords[category].includes(term)) {
+          this.keywords[category].push(term);
+        }
+      }
+    }
+    
+    // Clear the sets after updating
+    for (const category in this.discoveredTerms) {
+      this.discoveredTerms[category].clear();
+    }
+    
+    this.lastUpdated = new Date();
+  }
+  
+  /**
+   * Generate regex patterns for more complex matching
+   * This is called periodically to create patterns from keywords
+   */
+  generatePatterns() {
+    this.learnedPatterns = [];
+    
+    // Create regex for company + model pattern
+    // e.g., "OpenAI's new model" or "Microsoft announced"
+    const companyTerms = this.keywords.companies.join('|');
+    const releaseTerms = this.keywords.releaseTerms.join('|');
+    
+    if (companyTerms && releaseTerms) {
+      try {
+        const companyModelPattern = new RegExp(`(${companyTerms})(?:'s|\\s+)(${releaseTerms})`, 'i');
+        this.learnedPatterns.push(companyModelPattern);
+      } catch (e) {
+        Logger.log(`Error creating company model pattern: ${e.message}`);
+      }
+    }
+    
+    // Create pattern for model size reporting
+    // e.g., "13B parameters" or "context window of 100k tokens"
+    try {
+      const sizingPattern = /(\d+(?:\.\d+)?)\s*(?:b|billion|t|trillion|m|million)\s*(?:param(?:eter)?s?)|context(?:\s+window)?\s+of\s+(\d+)(?:k|m|\s+tokens)/i;
+      this.learnedPatterns.push(sizingPattern);
+    } catch (e) {
+      Logger.log(`Error creating sizing pattern: ${e.message}`);
+    }
+  }
+  
+  /**
+   * Save current keyword state to CacheService or PropertiesService
+   * This allows persistence between script runs
+   */
+  saveState() {
+    try {
+      const state = {
+        keywords: this.keywords,
+        lastUpdated: this.lastUpdated.toISOString()
+      };
+      
+      // Try to use PropertiesService first (more permanent)
+      try {
+        PropertiesService.getScriptProperties().setProperty(
+          'AI_KEYWORDS_STATE', 
+          JSON.stringify(state)
+        );
+      } catch (e) {
+        // Fall back to CacheService (temporary)
+        CacheService.getScriptCache().put(
+          'AI_KEYWORDS_STATE',
+          JSON.stringify(state),
+          21600 // 6 hours cache
+        );
+      }
+    } catch (error) {
+      Logger.log(`Error saving keyword state: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Load keyword state from CacheService or PropertiesService
+   * @return {boolean} - True if state was loaded successfully
+   */
+  loadState() {
+    try {
+      let stateJson = null;
+      
+      // Try PropertiesService first
+      try {
+        stateJson = PropertiesService.getScriptProperties().getProperty('AI_KEYWORDS_STATE');
+      } catch (e) {
+        // Fall back to CacheService
+        stateJson = CacheService.getScriptCache().get('AI_KEYWORDS_STATE');
+      }
+      
+      if (stateJson) {
+        const state = JSON.parse(stateJson);
+        this.keywords = state.keywords;
+        this.lastUpdated = new Date(state.lastUpdated);
+        return true;
+      }
+    } catch (error) {
+      Logger.log(`Error loading keyword state: ${error.message}`);
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Export keywords to a sheet for review and manual additions
+   * @param {string} sheetName - Name of the sheet to export to
+   */
+  exportToSheet(sheetName = "AI_Keywords_Management") {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let sheet = ss.getSheetByName(sheetName);
+      
+      if (!sheet) {
+        sheet = ss.insertSheet(sheetName);
+      } else {
+        // Remove any existing filters before clearing
+        try {
+          const filter = sheet.getFilter();
+          if (filter) {
+            filter.remove();
+          }
+        } catch (e) {
+          // Ignore errors if no filter exists
+          Logger.log("No existing filter to remove");
+        }
+        
+        // Now clear the sheet content
+        sheet.clear();
+      }
+      
+      // Create headers
+      const headers = ["Category", "Keyword", "Source", "Last Updated", "Status"];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+      
+      // Add keyword data
+      let rowIndex = 2;
+      const keywords = this.keywords;
+      const lastUpdated = this.lastUpdated;
+      
+      for (const category in keywords) {
+        for (const keyword of keywords[category]) {
+          sheet.getRange(rowIndex, 1, 1, 5).setValues([[
+            category,
+            keyword,
+            "System",
+            lastUpdated.toISOString().split('T')[0],
+            "Active"
+          ]]);
+          rowIndex++;
+        }
+      }
+      
+      // Add formatting
+      try {
+        sheet.getRange(1, 1, rowIndex - 1, headers.length).createFilter();
+      } catch (filterError) {
+        Logger.log("Could not create filter, but data was exported successfully");
+      }
+      
+      // Auto-resize columns for better readability
+      sheet.autoResizeColumns(1, headers.length);
+      
+      // Add instructions for manual additions
+      rowIndex += 2;
+      sheet.getRange(rowIndex, 1, 1, headers.length).merge().setValue(
+        "Instructions: To add custom keywords, insert rows below and fill in the Category, Keyword, and Source columns. Set Status to 'Pending'."
+      ).setFontStyle("italic");
+      
+      return true;
+    } catch (error) {
+      Logger.log(`Error exporting keywords to sheet: ${error.message}`);
+      return false;
+    }
+  }
+  
+  /**
+   * Import keywords from the management sheet
+   * @param {string} sheetName - Name of the sheet to import from
+   */
+  importFromSheet(sheetName = "AI_Keywords_Management") {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(sheetName);
+      
+      if (!sheet) {
+        return false;
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      
+      // Skip header row
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (row.length < 5) continue;
+        
+        const category = row[0];
+        const keyword = row[1];
+        const status = row[4];
+        
+        // Only process active or pending keywords
+        if (["Active", "Pending"].includes(status) && category && keyword) {
+          if (this.keywords[category] && !this.keywords[category].includes(keyword)) {
+            this.keywords[category].push(keyword);
+            
+            // Update status to Active
+            if (status === "Pending") {
+              sheet.getRange(i + 1, 5).setValue("Active");
+            }
+          }
+        }
+      }
+      
+      // Save updated state
+      this.saveState();
+      return true;
+    } catch (error) {
+      Logger.log(`Error importing keywords from sheet: ${error.message}`);
+      return false;
+    }
+  }
+}
+
+/**
+ * Create a global instance of the dynamic AI keywords system
+ */
+let globalAIKeywords = null;
+
+/**
+ * Get the global AI keywords instance
+ * @return {DynamicAIKeywords} - The keywords instance
+ */
+function getAIKeywords() {
+  if (!globalAIKeywords) {
+    globalAIKeywords = new DynamicAIKeywords();
+    // Try to load saved state
+    if (!globalAIKeywords.loadState()) {
+      // If no saved state, generate patterns
+      globalAIKeywords.generatePatterns();
+    }
+  }
+  return globalAIKeywords;
+}
+
+/**
+ * Enhanced version of containsAIModelKeywords that uses the dynamic system
+ * @param {string} text - Text to analyze
+ * @return {boolean} - True if AI model mentions are found
+ */
+function containsAIModelKeywords(text) {
+  return getAIKeywords().containsAIModelKeywords(text);
+}
+
+/**
+ * Enhanced version of extractAIModelInfo that learns from verified models
+ * @param {string} text - Text to analyze
+ * @return {Object} - Extracted AI model information
+ */
+function extractAIModelInfo(text) {
+  // Call the original implementation
+  const result = extractAIModelInfoOriginal(text);
+  
+  // If we found a model, use it to learn new patterns
+  if (result.modelName) {
+    getAIKeywords().learnFromVerifiedMention(text, result.modelName, result.organization);
+  }
+  
+  return result;
+}
+
+/**
+ * Rename the original function to avoid conflicts
+ * This should be done at the implementation stage
+ * @param {string} text - Text to analyze
+ * @return {Object} - Extracted AI model information
+ */
+function extractAIModelInfoOriginal(text) {
+  // Copy of the original implementation...
+  // We'll keep the original function intact and rename it when implementing
+  if (!text) return { modelName: null, organization: null, category: null };
+  
+  // Convert to lowercase for case-insensitive matching
+  const lowerText = text.toLowerCase();
+  
+  // Initialize result object
+  const result = {
+    modelName: null,
+    organization: null,
+    category: null
+  };
+  
+  // Check for model names using regex patterns
+  const modelPatterns = [
+    { regex: /\b(gpt-[0-9.]+)\b/i, org: "OpenAI", cat: "Text Generation" },
+    { regex: /\b(claude[- ][0-9.]*(?:opus|sonnet|haiku)?)\b/i, org: "Anthropic", cat: "Text Generation" },
+    { regex: /\b(gemini[- ]?(?:pro|ultra|nano)?[- ]?[0-9.]*)\b/i, org: "Google", cat: "Multimodal" },
+    { regex: /\b(llama[- ]?[0-9.]*)\b/i, org: "Meta", cat: "Text Generation" },
+    { regex: /\b(dall-e[- ]?[0-9.]*)\b/i, org: "OpenAI", cat: "Image Generation" },
+    { regex: /\b(stable diffusion[- ]?[xl]?[- ]?[0-9.]*)\b/i, org: "Stability AI", cat: "Image Generation" },
+    { regex: /\b(midjourney[- ]?[v]?[0-9.]*)\b/i, org: "Midjourney", cat: "Image Generation" },
+    { regex: /\b(phi-[0-9.]+)\b/i, org: "Microsoft", cat: "Text Generation" }
+  ];
+  
+  // Try to identify specific model names
+  for (const pattern of modelPatterns) {
+    const match = text.match(pattern.regex);
+    if (match) {
+      result.modelName = match[1];
+      result.organization = pattern.org;
+      result.category = pattern.cat;
+      break;
+    }
+  }
+  
+  // If no specific model found, try to extract from context
+  if (!result.modelName) {
+    // Look for phrases like "X releases new Y model"
+    const releasePatterns = [
+      /\b(OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney)\b.{1,50}\b(?:releases?|announces?|launches?|introduces?|unveils?)\b.{1,50}\b([A-Za-z0-9-]+(?: [A-Za-z0-9]+){0,2})\b.{0,20}\b(?:model|AI|LLM)\b/i,
+      /\b(?:new|latest)\b.{1,30}\b([A-Za-z0-9-]+(?: [A-Za-z0-9]+){0,2})\b.{1,30}\b(?:model|AI|LLM)\b.{1,50}\b(OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney)\b/i
+    ];
+    
+    for (const pattern of releasePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        // If the pattern has the organization captured first
+        if (match[1] && /OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney/i.test(match[1])) {
+          result.organization = match[1];
+          result.modelName = match[2];
+        } 
+        // If the pattern has the model name captured first
+        else if (match[2] && /OpenAI|Anthropic|Google|Meta|Microsoft|Stability AI|Midjourney/i.test(match[2])) {
+          result.modelName = match[1];
+          result.organization = match[2];
+        }
+        
+        if (result.modelName) break;
+      }
+    }
+  }
+   // Determine category if not set
+  if (result.modelName && !result.category) {
+    if (/image|vision|diffusion|dalle|stable/i.test(lowerText)) {
+      result.category = "Image Generation";
+    } else if (/text|language|chat|llm|gpt|claude/i.test(lowerText)) {
+      result.category = "Text Generation";
+    } else if (/multi|both|audio|video/i.test(lowerText)) {
+      result.category = "Multimodal";
+    } else {
+      result.category = "Unknown";
+    }
+  }
+  
+  return result;
+}
+/**
+ * Main onOpen function that runs when the spreadsheet is opened
+ * Sets up all menu items for both AI Keywords and Research Log
+ */
+function onOpen() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // Create the AI Keywords menu
+    ui.createMenu('AI Keywords')
+      .addItem('Export Keywords to Sheet', 'exportKeywordsToSheet')
+      .addItem('Import Keywords from Sheet', 'importKeywordsFromSheet')
+      .addSeparator()
+      .addItem('Apply Keyword Relevance Learning', 'applyRelevanceLearning')
+      .addToUi();
+    
+    // Create Research Log menu with all options
+    ui.createMenu('Research Log')
+      .addItem('Setup Relevance Tracking', 'setupResearchLogRelevanceTracking')
+      .addItem('Apply Relevance Learning', 'applyRelevanceLearningToKeywords')
+      .addItem('Assess Current Entry', 'prepareCurrentEntryRelevance')
+      .addSeparator()
+      .addItem('Enhance Research Log (All-in-One)', 'enhanceResearchLog')
+      .addItem('Cluster by Topic (Fixed)', 'clusterResearchLogByTopicFixed')
+      .addSeparator()
+      .addItem('Open Relevance Predictor (Sidebar)', 'showRelevancePredictorSidebar')
+      .addItem('Test Relevance Predictor', 'testRelevancePrediction')
+      .addSeparator()
+      .addItem('Fix Column Alignment', 'fixColumnAlignment')
+      .addSeparator()
+      .addItem('Extract Article URLs (Improved)', 'extractArticleURLsImproved')
+      .addItem('Make URLs Clickable', 'makeArticleUrlsClickable')
+      .addToUi();
+      
+  } catch (e) {
+    Logger.log('Error creating menus: ' + e.message);
+  }
+}
+
+/**
+ * Handler for exporting keywords
+ */
+function exportKeywordsToSheet() {
+  getAIKeywords().exportToSheet();
+  SpreadsheetApp.getActiveSpreadsheet().toast('Keywords exported successfully!', 'Export Complete');
+}
+
+/**
+ * Handler for importing keywords
+ */
+function importKeywordsFromSheet() {
+  getAIKeywords().importFromSheet();
+  SpreadsheetApp.getActiveSpreadsheet().toast('Keywords imported and relevance data updated!', 'Import Complete');
+}
+
+/**
+ * Apply relevance learning to adjust keyword weights
+ */
+function applyRelevanceLearning() {
+  const aiKeywords = getAIKeywords();
+  const relevanceData = aiKeywords.keywordRelevance;
+  const usageData = aiKeywords.usageCounts;
+  
+  // Create a report of what was learned
+  let report = "Relevance Learning Applied:\n\n";
+  
+  // Process each category
+  for (const category in relevanceData) {
+    report += `Category: ${category}\n`;
+    let highRelevanceKeywords = [];
+    let lowRelevanceKeywords = [];
+    
+    // Check each keyword's relevance
+    for (const keyword in relevanceData[category]) {
+      const data = relevanceData[category][keyword];
+      
+      if (data && data.score) {
+        // High relevance (score 8-10)
+        if (data.score >= 8) {
+          highRelevanceKeywords.push({
+            keyword: keyword,
+            score: data.score,
+            explanation: data.explanation || "No explanation provided"
+          });
+        }
+        // Low relevance (score 1-3)
+        else if (data.score <= 3) {
+          lowRelevanceKeywords.push({
+            keyword: keyword,
+            score: data.score,
+            explanation: data.explanation || "No explanation provided"
+          });
+        }
+      }
+    }
+    
+    // Report high relevance keywords
+    if (highRelevanceKeywords.length > 0) {
+      report += "  High Relevance Keywords:\n";
+      for (const item of highRelevanceKeywords) {
+        report += `    - "${item.keyword}" (Score: ${item.score}): ${item.explanation}\n`;
+      }
+    }
+    
+    // Report low relevance keywords
+    if (lowRelevanceKeywords.length > 0) {
+      report += "  Low Relevance Keywords:\n";
+      for (const item of lowRelevanceKeywords) {
+        report += `    - "${item.keyword}" (Score: ${item.score}): ${item.explanation}\n`;
+      }
+    }
+    
+    report += "\n";
+  }
+  
+  // Display the report
+  const ui = SpreadsheetApp.getUi();
+  ui.alert('Relevance Learning Report', report, ui.ButtonSet.OK);
+  
+  // Save the updated state
+  aiKeywords.saveState();
+}

@@ -1,0 +1,273 @@
+/**
+ * Manage AI Model Keywords system
+ * This function handles maintenance of the keyword system
+ */
+function manageAIKeywords() {
+  // Get the AI keywords instance
+  const keywords = getAIKeywords();
+  
+  // Regenerate patterns
+  keywords.generatePatterns();
+  
+  // Export current keywords to sheet for review
+  keywords.exportToSheet();
+  
+  // Import any manual additions from the sheet
+  keywords.importFromSheet();
+  
+  // Save state
+  keywords.saveState();
+  
+  return {
+    lastUpdated: keywords.lastUpdated,
+    categories: Object.keys(keywords.keywords),
+    totalKeywords: Object.values(keywords.keywords).reduce((sum, arr) => sum + arr.length, 0),
+    patterns: keywords.learnedPatterns.length
+  };
+}
+
+/**
+ * Add custom keywords to the AI model keywords system
+ * @param {string} category - Category to add to (modelPatterns, companies, etc.)
+ * @param {Array} keywords - Array of keywords to add
+ * @return {boolean} - True if successful
+ */
+function addCustomKeywords(category, keywords) {
+  if (!category || !keywords || !Array.isArray(keywords)) {
+    return false;
+  }
+  
+  try {
+    const aiKeywords = getAIKeywords();
+    
+    if (!aiKeywords.keywords[category]) {
+      aiKeywords.keywords[category] = [];
+    }
+    
+    let added = 0;
+    for (const keyword of keywords) {
+      if (!aiKeywords.keywords[category].includes(keyword)) {
+        aiKeywords.keywords[category].push(keyword);
+        added++;
+      }
+    }
+    
+    // Save changes
+    aiKeywords.saveState();
+    
+    Logger.log(`Added ${added} keywords to ${category}`);
+    return true;
+  } catch (error) {
+    Logger.log(`Error adding custom keywords: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Run a discovery process to learn new AI model keywords
+ * This analyzes existing models and suggestions to discover patterns
+ */
+function runKeywordDiscoveryProcess() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const modelsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.MODELS);
+  const suggestionsSheet = ss.getSheetByName(CONFIG.SHEET_NAMES.SUGGESTIONS);
+  
+  if (!modelsSheet && !suggestionsSheet) {
+    Logger.log("No data sheets found for keyword discovery");
+    return false;
+  }
+  
+  const aiKeywords = getAIKeywords();
+  let learnedCount = 0;
+  
+  // Process existing models
+  if (modelsSheet) {
+    const modelsData = modelsSheet.getDataRange().getValues();
+    const headers = modelsData[0];
+    
+    // Find relevant column indexes
+    const nameIndex = headers.indexOf("ModelName");
+    const orgIndex = headers.indexOf("OrganizationName");
+    const descIndex = headers.indexOf("Description");
+    
+    if (nameIndex >= 0 && orgIndex >= 0) {
+      // Process each model
+      for (let i = 1; i < modelsData.length; i++) {
+        const modelName = modelsData[i][nameIndex];
+        const orgName = modelsData[i][orgIndex];
+        const description = descIndex >= 0 ? modelsData[i][descIndex] : "";
+        
+        if (modelName) {
+          // Create a text that combines all data about this model
+          const combinedText = `${modelName} ${orgName} ${description}`;
+          aiKeywords.learnFromVerifiedMention(combinedText, modelName, orgName);
+          learnedCount++;
+        }
+      }
+    }
+  }
+  
+  // Process suggestions
+  if (suggestionsSheet) {
+    const suggestionsData = suggestionsSheet.getDataRange().getValues();
+    const headers = suggestionsData[0];
+    
+    // Find relevant column indexes
+    const nameIndex = headers.indexOf("Suggested Model Name");
+    const orgIndex = headers.indexOf("Organization");
+    const notesIndex = headers.indexOf("Notes");
+    
+    if (nameIndex >= 0) {
+      // Process each suggestion
+      for (let i = 1; i < suggestionsData.length; i++) {
+        const modelName = suggestionsData[i][nameIndex];
+        const orgName = orgIndex >= 0 ? suggestionsData[i][orgIndex] : "";
+        const notes = notesIndex >= 0 ? suggestionsData[i][notesIndex] : "";
+        
+        if (modelName && modelName !== "[Research Needed]") {
+          // Create a text that combines all data about this model
+          const combinedText = `${modelName} ${orgName} ${notes}`;
+          aiKeywords.learnFromVerifiedMention(combinedText, modelName, orgName);
+          learnedCount++;
+        }
+      }
+    }
+  }
+  
+  // Generate new patterns
+  aiKeywords.generatePatterns();
+  
+  // Save updated state
+  aiKeywords.saveState();
+  
+  Logger.log(`Discovered keywords from ${learnedCount} model entries`);
+  return learnedCount > 0;
+}
+
+/**
+ * Set up a trigger to regularly update the AI keywords system
+ */
+function setupKeywordMaintenanceTrigger() {
+  // Delete any existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "manageAIKeywords") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Create a new weekly trigger that runs on Monday
+  ScriptApp.newTrigger("manageAIKeywords")
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(1)
+    .create();
+  
+  // Also create a trigger for discovery process
+  ScriptApp.newTrigger("runKeywordDiscoveryProcess")
+    .timeBased()
+    .everyDays(3)
+    .atHour(2)
+    .create();
+  
+  Logger.log("Keyword maintenance triggers created");
+}
+
+/**
+ * Import the latest AI model trends from a predefined list
+ * This function would typically call an external API or service 
+ * to get trending AI terms, but we'll use a hard-coded list for demonstration
+ */
+function importLatestAIModelTrends() {
+  // In a real implementation, this would call an API or service
+  // For now, we'll use a hard-coded list of recent models and terms
+  
+  const latestTrends = {
+    modelPatterns: [
+      'claude-3.5', 'claude-3.7', 'gpt-4o', 'gpt-4-turbo', 'llama-3', 'mistral-large', 'phi-3',
+      'sora', 'imagen-2', 'mamba', 'devin', 'claude-opus', 'sdxl-turbo'
+    ],
+    companies: [
+      'inflection', 'xi', 'deepmind', 'cognition labs', 'grok', 'deepmind', 'xai', 'tesla ai'
+    ],
+    modelTypes: [
+      'reasoning', 'agentic', 'code interpreter', 'multimodal', 'state space model', 'ssm',
+      'real-time', 'streaming', 'on-device', 'autonomous agent'
+    ]
+  };
+  
+  const aiKeywords = getAIKeywords();
+  let addedCount = 0;
+  
+  // Add trends to keywords
+  for (const category in latestTrends) {
+    if (aiKeywords.keywords[category]) {
+      for (const trend of latestTrends[category]) {
+        if (!aiKeywords.keywords[category].includes(trend)) {
+          aiKeywords.keywords[category].push(trend);
+          addedCount++;
+        }
+      }
+    }
+  }
+  
+  // Save changes
+  aiKeywords.saveState();
+  
+  Logger.log(`Added ${addedCount} trending AI terms`);
+  return addedCount;
+}
+
+/**
+ * Create a user interface to manage AI keywords
+ */
+function showKeywordManagementUI() {
+  const ui = SpreadsheetApp.getUi();
+  
+  // Create a custom menu
+  ui.createMenu('AI Model Keywords')
+    .addItem('Manage Keywords', 'manageAIKeywords')
+    .addItem('Run Discovery Process', 'runKeywordDiscoveryProcess')
+    .addItem('Import Latest Trends', 'importLatestAIModelTrends')
+    .addSeparator()
+    .addItem('Setup Maintenance Triggers', 'setupKeywordMaintenanceTrigger')
+    .addToUi();
+  
+  // Show initial dialog
+  const aiKeywords = getAIKeywords();
+  const totalKeywords = Object.values(aiKeywords.keywords).reduce((sum, arr) => sum + arr.length, 0);
+  
+  const html = HtmlService.createHtmlOutput(`
+    <h2>AI Model Keywords System</h2>
+    <p>Current system contains ${totalKeywords} keywords across ${Object.keys(aiKeywords.keywords).length} categories.</p>
+    <p>Last updated: ${aiKeywords.lastUpdated.toLocaleString()}</p>
+    <hr>
+    <p>Use the 'AI Model Keywords' menu to manage the system.</p>
+  `)
+  .setWidth(400)
+  .setHeight(250);
+  
+  ui.showModelessDialog(html, 'AI Model Keywords System');
+}
+
+function onboardAIKeywordsSystem() {
+  // Initialize the system
+  const keywords = getAIKeywords();
+  
+  // Run discovery process on existing data
+  runKeywordDiscoveryProcess();
+  
+  // Import latest trends
+  importLatestAIModelTrends();
+  
+  // Export to sheet for review
+  keywords.exportToSheet();
+  
+  // Set up maintenance triggers
+  setupKeywordMaintenanceTrigger();
+  
+  // Add UI menu
+  showKeywordManagementUI();
+  
+  return "AI Keywords System initialized successfully!";
+}
